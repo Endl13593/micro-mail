@@ -1,0 +1,62 @@
+version: '3.7'
+
+services:
+    # image micro-email
+    micro_mail:
+        build:
+            args:
+                user: eduardo
+                uid: 1000
+            context: ./
+            dockerfile: Dockerfile
+        image: laravel-app
+        restart: unless-stopped
+        working_dir: /var/www/
+        volumes:
+            - ./:/var/www
+        depends_on:
+            -   redis
+            -   queue
+        networks:
+            - micromail
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+
+    # nginx
+    nginx:
+        image: nginx:alpine
+        restart: unless-stopped
+        ports:
+            - 8005:80
+        volumes:
+            - ./:/var/www
+            - ./docker/nginx/:/etc/nginx/conf.d/
+        networks:
+            - micromail
+
+    # queue
+    queue:
+        build:
+            args:
+                user: eduardo
+                uid: 1000
+            context: ./
+            dockerfile: Dockerfile
+        command: 'php artisan queue:work'
+        restart: unless-stopped
+        volumes:
+            - ./:/var/www
+        networks:
+            - micromail
+
+    # redis
+    redis:
+        image: redis:latest
+        ports:
+            - 6380:6379
+        networks:
+            - micromail
+
+networks:
+    micromail:
+        driver: bridge
